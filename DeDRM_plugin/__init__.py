@@ -216,12 +216,16 @@ class DeDRM(FileTypePlugin):
             traceback.print_exc()
             raise
 
-    def postProcessEPUB(self, path_to_ebook):
+    def postProcessEPUB(self, path_to_ebook, path_to_original_ebook = None):
         # This is called after the DRM is removed (or if no DRM was present)
         # It does stuff like de-obfuscating fonts (by calling checkFonts) 
         # or removing watermarks. 
 
         postProcessStart = time.time()
+        postProcessingNeeded = False
+
+        # Save a backup of the EPUB path after DRM removal but before any postprocessing is done.
+        pre_postprocessing_EPUB_path = path_to_ebook
 
         try: 
             import prefs
@@ -247,6 +251,15 @@ class DeDRM(FileTypePlugin):
             
             postProcessEnd = time.time()
             print("{0} v{1}: Post-processing took {2:.1f} seconds".format(PLUGIN_NAME, PLUGIN_VERSION, postProcessEnd-postProcessStart))
+
+
+            # If the EPUB is DRM-free (path_to_original_ebook will only be set in this case), 
+            # and the post-processing hasn't changed anything in the EPUB, 
+            # return the raw original file from path_to_original_ebook from before the
+            # zipfix code was executed.
+            if ((path_to_ebook == pre_postprocessing_EPUB_path) and path_to_original_ebook is not None):
+                print("{0} v{1}: Post-processing didn't do anything on DRM-free EPUB, returning original file".format(PLUGIN_NAME, PLUGIN_VERSION))
+                return path_to_original_ebook
 
             return path_to_ebook
 
@@ -299,9 +312,9 @@ class DeDRM(FileTypePlugin):
         # import the LCP handler
         import lcpdedrm
 
-        if (lcpdedrm.isLCPbook(path_to_ebook)):
+        if (lcpdedrm.isLCPbook(inf.name)):
             try: 
-                retval = lcpdedrm.decryptLCPbook(path_to_ebook, dedrmprefs['lcp_passphrases'], self)
+                retval = lcpdedrm.decryptLCPbook(inf.name, dedrmprefs['lcp_passphrases'], self)
             except:
                 print("Looks like that didn't work:")
                 raise
@@ -628,7 +641,7 @@ class DeDRM(FileTypePlugin):
 
         # Not a Barnes & Noble nor an Adobe Adept
         # Probably a DRM-free EPUB, but we should still check for fonts.
-        return self.postProcessEPUB(inf.name)
+        return self.postProcessEPUB(inf.name, path_to_ebook)
 
     
     def PDFIneptDecrypt(self, path_to_ebook):
@@ -914,7 +927,7 @@ class DeDRM(FileTypePlugin):
         kindleDatabases = list(dedrmprefs['kindlekeys'].items())
 
         try:
-            book = k4mobidedrm.GetDecryptedBook(path_to_ebook,kindleDatabases,androidFiles,serials,pids,self.starttime)
+            book = k4mobidedrm.GetDecryptedBook(path_to_ebook,kindleDatabases,androidFiles,serials,pids,self.starttime,dedrmprefs["kindleextrakeyfile"])
         except Exception as e:
             decoded = False
             # perhaps we need to get a new default Kindle for Mac/PC key

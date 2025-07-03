@@ -8,6 +8,8 @@ Installation
 ------------
 Open calibre's Preferences dialog.  Click on the "Plugins" button.  Next, click on the button, "Load plugin from file".  Navigate to the unzipped DeDRM_tools folder, find the file "obok_plugin.zip".  Click to select the file and select "Open".  Click "Yes" in the "Are you sure?" dialog box. Click the "OK" button in the "Success" dialog box.
 
+Note: This plugin requires the "wmic" component on Windows. On Windows 10 and below this will be available by default, on Windows 11 it needs to be explicitly enabled. Make sure that on your Windows 11 machine, under Settings -> System -> Optional features -> Add an optional feature -> View features, "WMIC" is enabled / activated, otherwise this plugin may not work correctly. 
+
 
 Customization
 -------------
@@ -16,7 +18,6 @@ No customization is required, except choosing which menus will show the plugin. 
 
 Using the plugin
 ----------------
-
 Select the plugin's menu or icon from whichever part of the calibre interface you have chosen to have it. Follow the instructions in the dialog that appears.
 
 
@@ -29,5 +30,5 @@ If you find that the DeDRM plugin is not working for you (imported ebooks still 
  - Once calibre has re-started, import the problem ebook.
  - Now close calibre.
 
-A log will appear that you can copy and paste into a comment at Apprentice Alf's blog, http://apprenticealf.wordpress.com/ or an issue at Apprentice Harper's repository, https://github.com/apprenticeharper/DeDRM_tools/issues . You should also give details of your computer, and how you obtained the ebook file.
+A log will appear that you can copy and paste into a GitHub issue at noDRM's repository, https://github.com/noDRM/DeDRM_tools/issues . You should also give details of your computer, and how you obtained the ebook file.
 

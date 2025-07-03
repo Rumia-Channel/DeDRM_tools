@@ -374,7 +374,11 @@ class InterfacePluginAction(InterfaceAction):
         result['success'] = False
         result['fileobj'] = None
 
-        zin = zipfile.ZipFile(book.filename, 'r')
+        try:
+            zin = zipfile.ZipFile(book.filename, 'r')
+        except FileNotFoundError:
+            print (_('{0} - File "{1}" not found. Make sure the eBook has been properly downloaded in the Kobo app.').format(PLUGIN_NAME, book.filename))
+            return result
         #print ('Kobo library filename: {0}'.format(book.filename))
         for userkey in self.userkeys:
             print (_('Trying key: '), codecs.encode(userkey, 'hex'))

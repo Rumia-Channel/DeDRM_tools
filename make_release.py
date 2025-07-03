@@ -18,6 +18,8 @@ DEDRM_SRC_TMP_DIR = 'DeDRM_plugin_temp'
 DEDRM_README= 'DeDRM_plugin_ReadMe.txt'
 OBOK_SRC_DIR = 'Obok_plugin'
 OBOK_README = 'obok_plugin_ReadMe.txt'
+KRFTool="Other_Tools/KRFKeyExtractor/KRFKeyExtractor.exe"
+KRFFrida="Other_Tools/KRFKeyExtractor/kindleFridaInstr.py"
 RELEASE_DIR = 'release'
 
 def patch_file(filepath):
@@ -78,6 +80,14 @@ def make_release(version):
     shutil.move(OBOK_SRC_DIR+'.zip', RELEASE_DIR)
     shutil.copy(DEDRM_README, RELEASE_DIR)
     shutil.copy(OBOK_README, RELEASE_DIR)
+    try:
+        shutil.copy(KRFTool, RELEASE_DIR)
+    except:
+        pass
+    try:
+        shutil.copy(KRFFrida, RELEASE_DIR)
+    except:
+        pass
     shutil.copy("ReadMe_Overview.txt", RELEASE_DIR)
 
     # Remove temp folder:

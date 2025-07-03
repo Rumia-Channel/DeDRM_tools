@@ -1,24 +1,19 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-# ion.py
-# Copyright © 2013-2020 Apprentice Harper et al.
+"""ion.py: Decrypt Kindle KFX files.
 
-__license__ = 'GPL v3'
-__version__ = '3.0'
+Revision history:
+  Pascal implementation by lulzkabulz.
+  BinaryIon.pas + DrmIon.pas + IonSymbols.pas
+  1.0   - Python translation by apprenticenaomi.
+  1.1   - DeDRM integration by anon.
+  1.2   - Added pylzma import fallback
+  1.3   - Fixed lzma support for calibre 4.6+
+  2.0   - VoucherEnvelope v2/v3 support by apprenticesakuya.
+  3.0   - Added Python 3 compatibility for calibre 5.0
 
-# Revision history:
-#  Pascal implementation by lulzkabulz.
-#  BinaryIon.pas + DrmIon.pas + IonSymbols.pas
-#  1.0   - Python translation by apprenticenaomi.
-#  1.1   - DeDRM integration by anon.
-#  1.2   - Added pylzma import fallback
-#  1.3   - Fixed lzma support for calibre 4.6+
-#  2.0   - VoucherEnvelope v2/v3 support by apprenticesakuya.
-#  3.0   - Added Python 3 compatibility for calibre 5.0
-
-"""
-Decrypt Kindle KFX files.
+Copyright © 2013-2020 Apprentice Harper et al.
 """
 
 import collections
@@ -29,6 +24,9 @@ import os.path
 import struct
 
 from io import BytesIO
+
+__license__ = 'GPL v3'
+__version__ = '3.0'
 
 #@@CALIBRE_COMPAT_CODE@@
 
@@ -59,8 +57,10 @@ except ImportError:
             except ImportError:
                 # Windows-friendly choice: pylzma wheels
                 import pylzma as lzma
-
-from .kfxtables import *
+try:
+ from .kfxtables import *
+except:
+ from kfxtables import *
 
 TID_NULL = 0
 TID_BOOLEAN = 1
@@ -746,7 +746,9 @@ SYM_NAMES = [ 'com.amazon.drm.Envelope@1.0',
               ] + ['com.amazon.drm.VoucherEnvelope@%d.0' % n
                    for n in list(range(2, 29)) + [
                                    9708, 1031, 2069, 9041, 3646,
-                                   6052, 9479, 9888, 4648, 5683]]
+                                   6052, 9479, 9888, 4648, 5683,7384,2746,3332]+list(range(10001,11111))] #this assumes there are no new types added aside from voucher envelopes. So far it was largely correct
+                                   
+
 
 def addprottable(ion):
     ion.addtocatalog("ProtectedData", 1, SYM_NAMES)
@@ -1096,11 +1098,11 @@ def process_V9888(st):
     ws.sbox(d0x6a0bf4d0,d0x6a0dab50,[1,2])
     ws.sbox(d0x6a0ba4d0,d0x6a0dab50,[1,2])
     ws.shuffle(repl)
-    ws.shuffle(repl)    
+    ws.shuffle(repl)
     ws.shuffle(repl)
     ws.sbox(d0x6a0bf4d0,d0x6a0dab50,[1,2])
     ws.sbox(d0x6a0ba4d0,d0x6a0dab50,[1,2])
-    ws.exlookup(d0x6a0be4d0)    
+    ws.exlookup(d0x6a0be4d0)
     dat=ws.mask(st[sto:sto+16])
     out+=dat
     sto+=16
@@ -1124,7 +1126,7 @@ def process_V4648(st):
     ws.sbox(d0x6a0c51a8,d0x6a0dab50,[1,3])
     ws.shuffle(repl)
     ws.shuffle(repl)
-    ws.exlookup(d0x6a0c91a8)    
+    ws.exlookup(d0x6a0c91a8)
     dat=ws.mask(st[sto:sto+16])
     out+=dat
     sto+=16
@@ -1148,7 +1150,7 @@ def process_V5683(st):
     ws.shuffle(repl)
     ws.sbox(d0x6a0cfe80,d0x6a0dab50,[])
     ws.shuffle(repl)
-    ws.exlookup(d0x6a0d3e80)    
+    ws.exlookup(d0x6a0d3e80)
     dat=ws.mask(st[sto:sto+16])
     out+=dat
     sto+=16
@@ -1163,12 +1165,12 @@ def process_V5683(st):
 #     if a<0: a=256+a
 #     ax.append(ha[(a>>4)]+ha[a%16])
 #   return "".join(ax)
-# 
+#
 # def memhex(adr,sz):
 #   emu=EmulatorHelper(currentProgram)
 #   arr=emu.readMemory(getAddress(adr),sz)
 #   return a2hex(arr)
-# 
+#
 
 
 
@@ -1178,7 +1180,7 @@ def obfuscate(secret, version):
     if version == 1:  # v1 does not use obfuscation
         return secret
 
-    magic, word = OBFUSCATION_TABLE["V%d" % version]
+    magic, word = OBFUSCATION_TABLE.get("V%d" % version,(1,b"unknown"))
 
     # extend secret so that its length is divisible by the magic number
     if len(secret) % magic != 0:
@@ -1212,7 +1214,7 @@ def scramble(st,magic):
 def obfuscate2(secret, version):
     if version == 1:  # v1 does not use obfuscation
         return secret
-    magic, word = OBFUSCATION_TABLE["V%d" % version]
+    magic, word = OBFUSCATION_TABLE.get("V%d" % version,(1,b"unknown"))
     # extend secret so that its length is divisible by the magic number
     if len(secret) % magic != 0:
         secret = secret + b'\x00' * (magic - len(secret) % magic)
@@ -1254,7 +1256,7 @@ def scramble3(st,magic):
             iVar5 = iVar5 - magic
             index -= 1
             if uVar4<=-1: break
-      else: 
+      else:
         if (offset < magic):
           iVar3 = 0
         else :
@@ -1274,16 +1276,16 @@ def scramble3(st,magic):
             index=index-1
             iVar5 = iVar5 + magic;
             cntr += 1;
-            if iVar3>=divs: break 
+            if iVar3>=divs: break
       offset = offset + 1
-      if offset >= ((magic - 1) + divs) :break 
+      if offset >= ((magic - 1) + divs) :break
   return ret
 
 #not sure if the third variant is used anywhere, but it is in Kindle, so I tried to add it
 def obfuscate3(secret, version):
     if version == 1:  # v1 does not use obfuscation
         return secret
-    magic, word = OBFUSCATION_TABLE["V%d" % version]
+    magic, word = OBFUSCATION_TABLE.get("V%d" % version,(1,b"unknown"))
     # extend secret so that its length is divisible by the magic number
     if len(secret) % magic != 0:
         secret = secret + b'\x00' * (magic - len(secret) % magic)
@@ -1298,6 +1300,28 @@ def obfuscate3(secret, version):
         obfuscated[i] = shuffled[i] ^ wordhash[i % 16]
     return obfuscated
 
+class SKeyList(object):
+    def __init__(self, skeyfile):
+      self.keycandidates={}
+      self.secretkeys={} #let us hope there is one key per voucher...
+      if skeyfile is None: return
+      if os.path.isfile(skeyfile):
+          with open(skeyfile,"r",encoding="utf8") as fl:
+              for line in fl:
+                  sline=line.strip()
+                  if len(sline)<32: continue 
+                  lst=sline.split("$")
+                  if len(lst)<2: continue 
+                  voucherid=lst[0]
+                  for key in lst[1:]:
+                      skey=key.split(":")
+                      if skey[0]=="secret_key":
+                          self.secretkeys[voucherid]=bytes.fromhex(skey[1])
+                      elif skey[0]=="shared_key":
+                          curlist=self.keycandidates.get(voucherid,[])
+                          curlist.append(bytes.fromhex(skey[1]))
+                          self.keycandidates[voucherid]=curlist
+                          
 class DrmIonVoucher(object):
     envelope = None
     version = None
@@ -1315,7 +1339,7 @@ class DrmIonVoucher(object):
     cipheriv = b""
     secretkey = b""
 
-    def __init__(self, voucherenv, dsn, secret):
+    def __init__(self, voucherenv, dsn, secret,skeylist=None):
         self.dsn, self.secret = dsn, secret
 
         if isinstance(dsn, str):
@@ -1325,7 +1349,10 @@ class DrmIonVoucher(object):
             self.secret = secret.encode('ASCII')
 
         self.lockparams = []
-
+        self.keycandidates=[]
+        self.secretkeycandidate=None
+        self.skeylist=skeylist
+        self.voucher_id=""
         self.envelope = BinaryIonParser(voucherenv)
         addprottable(self.envelope)
 
@@ -1342,16 +1369,17 @@ class DrmIonVoucher(object):
                 _assert(False, "Unknown lock parameter: %s" % param)
 
 
-        # i know that version maps to scramble pretty much 1 to 1, but there was precendent where they changed it, so... 
+        # i know that version maps to scramble pretty much 1 to 1, but there was precendent where they changed it, so...
         sharedsecrets = [obfuscate(shared, self.version),obfuscate2(shared, self.version),obfuscate3(shared, self.version),
                          process_V9708(shared), process_V1031(shared), process_V2069(shared), process_V9041(shared),
                          process_V3646(shared), process_V6052(shared), process_V9479(shared), process_V9888(shared),
                          process_V4648(shared), process_V5683(shared)]
-        
+
         decrypted=False
-        ex=None
-        for sharedsecret in sharedsecrets:
-            key = hmac.new(sharedsecret, b"PIDv3", digestmod=hashlib.sha256).digest()
+        lastexception = None # type: Exception | None
+        keycandidates=self.keycandidates+[hmac.new(sharedsecret, b"PIDv3", digestmod=hashlib.sha256).digest() for sharedsecret in sharedsecrets]
+        for key in keycandidates:
+            print(f"{key.hex()} {self.cipheriv[:16].hex()}")
             aes = AES.new(key[:32], AES.MODE_CBC, self.cipheriv[:16])
             try:
                 b = aes.decrypt(self.ciphertext)
@@ -1361,14 +1389,23 @@ class DrmIonVoucher(object):
 
                 _assert(self.drmkey.hasnext() and self.drmkey.next() == TID_LIST and self.drmkey.gettypename() == "com.amazon.drm.KeySet@1.0",
                     "Expected KeySet, got %s" % self.drmkey.gettypename())
-                decrypted=True 
+                decrypted=True
 
                 print("Decryption succeeded")
                 break
             except Exception as ex:
+                lastexception = ex
                 print("Decryption failed, trying next fallback ")
         if not decrypted:
-            raise ex
+            if self.secretkeycandidate is None:
+              print("Failed all decryption attempts and no key candidate available")
+              raise lastexception
+            else:
+                print("Failed all decryption attempts but we have a key candidate")
+                self.secretkey =self.secretkeycandidate
+                self.drmkey=None
+                return
+                 
 
         self.drmkey.stepin()
         while self.drmkey.hasnext():
@@ -1394,8 +1431,10 @@ class DrmIonVoucher(object):
     def parse(self):
         self.envelope.reset()
         _assert(self.envelope.hasnext(), "Envelope is empty")
-        _assert(self.envelope.next() == TID_STRUCT and str.startswith(self.envelope.gettypename(), "com.amazon.drm.VoucherEnvelope@"),
+        tn=self.envelope.gettypename()
+        _assert(self.envelope.next() == TID_STRUCT and str.startswith(tn, "com.amazon.drm.VoucherEnvelope@"),
                 "Unknown type encountered in envelope, expected VoucherEnvelope")
+        print(f"Envelope version {tn}")
         self.version = int(self.envelope.gettypename().split('@')[1][:-2])
 
         self.envelope.stepin()
@@ -1431,7 +1470,13 @@ class DrmIonVoucher(object):
             self.envelope.stepout()
 
         self.parsevoucher()
-
+        if self.skeylist is not None:
+            self.keycandidates=self.skeylist.keycandidates.get(self.voucher_id,[])
+            print(f"Got {len(self.keycandidates)} shared key candidates {self.skeylist.keycandidates} {self.voucher_id}")
+            self.secretkeycandidate=self.skeylist.secretkeys.get(self.voucher_id,None)
+            if self.secretkeycandidate is not None:
+                print(f"Got secret key candidate from file: {self.secretkeycandidate.hex()}")
+           
     def parsevoucher(self):
         _assert(self.voucher.hasnext(), "Voucher is empty")
         _assert(self.voucher.next() == TID_STRUCT and self.voucher.gettypename() == "com.amazon.drm.Voucher@1.0",
@@ -1445,6 +1490,8 @@ class DrmIonVoucher(object):
                 self.cipheriv = self.voucher.lobvalue()
             elif self.voucher.getfieldname() == "cipher_text":
                 self.ciphertext = self.voucher.lobvalue()
+            elif self.voucher.getfieldname() == "id":
+                self.voucher_id = self.voucher.stringvalue()
             elif self.voucher.getfieldname() == "license":
                 _assert(self.voucher.gettypename() == "com.amazon.drm.License@1.0",
                         "Unknown license: %s" % self.voucher.gettypename())
@@ -1483,11 +1530,11 @@ class DrmIon(object):
     key = b""
     onvoucherrequired = None
 
-    def __init__(self, ionstream, onvoucherrequired):
+    def __init__(self, ionstream, onvoucherrequired,skeylist=None):
         self.ion = BinaryIonParser(ionstream)
         addprottable(self.ion)
         self.onvoucherrequired = onvoucherrequired
-
+        self.skeylist = skeylist
     def parse(self, outpages):
         self.ion.reset()
 
@@ -1508,14 +1555,24 @@ class DrmIon(object):
                     self.ion.stepin()
                     while self.ion.hasnext():
                         self.ion.next()
-                        if self.ion.getfieldname() != "encryption_voucher":
+                        fname=self.ion.getfieldname()
+                        if self.key is None or len(self.key)==0:
+                            if fname=="encryption_key":
+                                keyname=self.ion.stringvalue()
+                                if self.skeylist is not None:
+                                    self.key=self.skeylist.secretkeys.get(keyname,self.key) # i know they are supposed to be voucher ids, but it is easier to dump them all into one file, their UIDs are distinct anyway
+                                    if self.key is not None and len(self.key)>10:
+                                        print("Obtained secret key from list: {}".format(self.key.hex()))
+                        if  fname != "encryption_voucher":
                             continue
 
                         if self.vouchername == "":
                             self.vouchername = self.ion.stringvalue()
                             self.voucher = self.onvoucherrequired(self.vouchername)
-                            self.key = self.voucher.secretkey
-                            _assert(self.key is not None, "Unable to obtain secret key from voucher")
+                            if self.voucher is not None and self.voucher.secretkey is not None and len(self.voucher.secretkey)>0:
+                                self.key = self.voucher.secretkey
+                                _assert(self.key is not None, "Unable to obtain secret key from voucher")
+                                
                         else:
                             _assert(self.vouchername == self.ion.stringvalue(),
                                     "Unexpected: Different vouchers required for same file?")
@@ -1536,7 +1593,7 @@ class DrmIon(object):
                             ct = self.ion.lobvalue()
                         elif self.ion.getfieldname() == "cipher_iv":
                             civ = self.ion.lobvalue()
-
+                    _assert(self.key is not None, "Unable to obtain secret key from voucher or keylist")
                     if ct is not None and civ is not None:
                         self.processpage(ct, civ, outpages, decompress, decrypt)
                     self.ion.stepout()
